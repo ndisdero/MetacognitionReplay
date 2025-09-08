@@ -1,5 +1,7 @@
 from psychopy import visual, core, event, gui, prefs # mental replay condition counterbalanced, with visuals
 import random
+import os
+import csv
 def show_images(win, images, min_display_time): # function to display instructions
     for img in images:
         stim = visual.ImageStim(win, image=img)
@@ -47,3 +49,15 @@ def get_pseudorandom_direction(prev_directions, max_repeats=3): # a direction ca
     if all(d == last_n[0] for d in last_n):
         return 1 if last_n[0] == -1 else -1
     return random.choice([-1, 1])
+
+def save_trial_data(filepath, header, data_row): 
+    file_exists = os.path.exists(filepath)
+    try:
+        with open(filepath, 'a', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            if not file_exists:
+                writer.writerow(header)
+            writer.writerow(data_row)
+    except PermissionError:
+        print(f"Unable to write to file {filepath}. Close the file if it's open.")
+        core.quit()

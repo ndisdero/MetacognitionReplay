@@ -1,5 +1,6 @@
 from psychopy import visual, core, event, gui, prefs
-import random, os, csv
+import random
+import os
 from datetime import datetime
 import utils
 import gabor_patches.generate_gaborPatches as gabor
@@ -76,7 +77,6 @@ random.seed(random_seed)
 # Collect reaction time
 rt_clock = core.Clock()
 
-
 # Sorting participants into 8 conditions
 participant_id_num = int(participant_id_clean)  # participant ID must be numeric
 group_id = participant_id_num % 8  # assign participant to 1 of 8 groups (0–7)
@@ -130,17 +130,6 @@ header = [
     "gabor_direction", "correct", "stim_strength", "vividness_on_left"
 ]
 
-def save_trial_data(filepath, header, data_row): 
-    file_exists = os.path.exists(filepath)
-    try:
-        with open(filepath, 'a', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            if not file_exists:
-                writer.writerow(header)
-            writer.writerow(data_row)
-    except PermissionError:
-        print(f"Unable to write to file {filepath}. Close the file if it's open.")
-        core.quit()
 
 
 fixation_cross = visual.TextStim(win, text="+", color='white', height=30)
@@ -179,6 +168,7 @@ def run_trial(block_type, block_number, trial_num, global_trial, gabor_direction
             vividness_keys = left_vividness_keys
             confidence_prompt_text = "How confident are you?\n\nUse U/I/O/P (right hand)"
             vividness_prompt_text = "How vivid was your mental replay?\n\nUse A/Z/E/R (left hand)"
+    
     else:  # without mental replay
         vividness_on_left = None
         confidence_keys = right_confidence_keys
@@ -222,12 +212,12 @@ def run_trial(block_type, block_number, trial_num, global_trial, gabor_direction
     correct_response = 'v' if gabor_direction < 0 else 'b' # it is orange response
 
     event.clearEvents()
-    rt_clock.reset()
     
     for stim in to_show[1]:
         stim.draw()
     win.flip()
 
+    rt_clock.reset()
     while True: # Wait for participant's response
         key = event.getKeys(keyList=key_list, timeStamped=rt_clock)
         if key != []:
@@ -292,7 +282,7 @@ def run_trial(block_type, block_number, trial_num, global_trial, gabor_direction
         response_time, gabor_direction, correct, stim_strength,
         vividness_on_left if block_type == "with_mental_replay" else None
     ]
-    save_trial_data(data_file, header, row)
+    utils.save_trial_data(data_file, header, row)
 
 
 # TRAINING PHASE
