@@ -9,7 +9,7 @@ import random as rd
 # Generate the 15 Gabor patches with different orientations
 
 
-def arc_vertices(radius, start, end, edges=120):
+def arc_vertices(radius, start, end, edges=190):
     """Generates vertices for an arc."""
     theta = np.linspace(start, end, edges)
     theta = np.deg2rad(-theta + 90)
@@ -56,7 +56,7 @@ def generate_gabor_patches(win, reference, direction, distance_to_bound):
     # Also for the gabor patches
     to_show_gabor = []
     for i in range(ct.NUM_PATCHES):
-        stim = psychopy.visual.GratingStim(win, ori=orientations[i], sf=0.2, 
+        stim = psychopy.visual.GratingStim(win, ori=orientations[i], sf=0.15, 
                                         contrast = 3,
                                         size=(ct.GABOR_SIZE, ct.GABOR_SIZE),
                                         pos=positions[i],

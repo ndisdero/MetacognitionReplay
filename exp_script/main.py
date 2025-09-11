@@ -368,7 +368,6 @@ def exp_part():
                 global_trial=global_trial_number,
                 gabor_direction=direction,
                 stim_strength=stim_strength,
-                ask_vividness=(condition == "with_mental_replay"),
             )
 
             # Adapt stim_strength
@@ -385,7 +384,7 @@ def exp_part():
             elif last_correct == 'False':
                 trial_stim_strength = min(1.0, trial_stim_strength + stim_strength_step)
     """
-training_part()
+#training_part()
 exp_part()
 utils.show_images(win, image_end, min_display_time)
 win.close()
