@@ -29,9 +29,6 @@ MENTAL_REPLAY_PAUSE = 1.5  # pause during mental replay instruction
 FEEDBACK_TIME = 0.5
 FIXATION_CROSS_DURATION = 0.5
 
-CONFIDENCE_DELAY_ESTIMATE = 1.5   # estimated replay duration (explanation: non-mental replay trials shorter than mental replay. This delay evens them out) 
-CONFIDENCE_JITTER_RANGE = 0.3     # ± jitter in seconds
-
 # Set relative paths
 phase = 0
 folder = {0: "code", 1: "pilot", 2: "experimental"}
@@ -49,15 +46,10 @@ image_training2 = [os.path.join(image_dir, f) for f in ["Training2_1.JPG", "Trai
 image_training3 = [os.path.join(image_dir, f) for f in ["Training3_1.JPG", "Training3_2.JPG"]]
 image_training_end = [os.path.join(image_dir, f) for f in ["Training_end.JPG"]]
 
-image_task1 = [os.path.join(image_dir, f) for f in ["Task1_1.JPG"]] # mental replay screen
-image_task2 = [os.path.join(image_dir, f) for f in ["Task2_1.JPG"]] # non-mental replay screen
+image_exp_instructions = [os.path.join(image_dir, f) for f in ["Experiment1.JPG", "Experiment2.JPG", "Experiment3.JPG", "Experiment4.JPG"]]
 
 image_break = [os.path.join(image_dir, "Break.jpg")]
-image_end = [os.path.join(image_dir, f) for f in ["End.JPG"]]
-
-# REPLAY IMAGE
-image_replay = [os.path.join(image_dir, "MentalReplayImg.png")]
-replay_stim = visual.ImageStim(win, image=image_replay[0])
+image_end = [os.path.join(image_dir, "End.JPG")]
 
 min_display_time = 2  # seconds before intructions can be skipped
 
@@ -150,7 +142,6 @@ data_file = os.path.join(save_directory, f"{participant_id_clean}_{timestamp}_ex
 
 # Fixation cross
 fixation_cross = visual.TextStim(win, text="+", color='white', height=30)
-circle_waiting = visual.Circle(win, radius=12, fillColor='white', lineColor='white', pos=(0, 0))
 
 # Response key mappings
 left_vividness_keys = {'a': 1, 'z': 2, 'e': 3, 'r': 4} # counterbalancing: the keys switch -- half the time vividness is on the left hand
@@ -177,6 +168,29 @@ def draw_visual_scale(win, selected, labels, y_offset=-100):
         text = visual.TextStim(win, text=label, pos=(x, y_offset - 40),
                                height=16, color='white', wrapWidth=200)
         text.draw()
+
+# Arrow stimuli for mental replay vs non-replay
+def make_arrow(win, pos, angle): # create an arrow stimulus at position 'pos' rotated by 'angle' degrees
+    return visual.ShapeStim(
+        win,
+        vertices=[[-40, -5], [0, -5], [0, -20], [35, 0], [0, 20], [0, 5], [-40, 5]],
+        fillColor='black',
+        lineColor='black',
+        pos=pos,
+        ori=angle
+    )
+
+# Positions (corners)
+arrow_positions = [(-100, 100), (100, 100), (-100, -100), (100, -100)]
+
+# Angles
+angles_inward = [45, 135, -45, -135]    # for mental replay
+angles_outward = [-135, -45, 135, 45]  # for non-replay
+
+# Generate arrow stimuli lists
+arrows_inward = [make_arrow(win, pos, angle) for pos, angle in zip(arrow_positions, angles_inward)]
+arrows_outward = [make_arrow(win, pos, angle) for pos, angle in zip(arrow_positions, angles_outward)]
+
 
 # CSV header
 header = [
@@ -212,13 +226,16 @@ def run_trial(block_type, block_number, trial_num, global_trial, gabor_direction
                 ("vividness", vividness_prompt_text, vividness_keys)]
     
     # Have the training progressively by including more prompts
-    if "training" in saved_block_label and int(saved_block_label.split("_")[1]) == 1:
-        prompts = []
-    elif "training" in saved_block_label and int(saved_block_label.split("_")[1]) == 2:
-        prompts = [("confidence", confidence_prompt_text, confidence_keys)]
-    elif "training" in saved_block_label and int(saved_block_label.split("_")[1]) == 3:
-        prompts = [("confidence", confidence_prompt_text, confidence_keys),
-            ("vividness", vividness_prompt_text, vividness_keys)]
+    parts = saved_block_label.split("_")
+    if "training" in saved_block_label and len(parts) > 1 and parts[1].isdigit():
+        block_num = int(parts[1])
+        if block_num == 1:
+            prompts = []
+        elif block_num == 2:
+            prompts = [("confidence", confidence_prompt_text, confidence_keys)]
+        elif block_num == 3:
+            prompts = [("confidence", confidence_prompt_text, confidence_keys),
+                       ("vividness", vividness_prompt_text, vividness_keys)]
 
     # Fixation cross
     fixation_cross.draw()
@@ -263,17 +280,19 @@ def run_trial(block_type, block_number, trial_num, global_trial, gabor_direction
 
     correct = correct_response == response
 
+    # Mental replay pause using arrows
     if block_type == "with_mental_replay":
-        # Show the replay instruction IMAGE for ~1 second
-        replay_stim.draw()
+        for arrow in arrows_inward:
+            arrow.draw()
         win.flip()
         check_for_escape()
-        core.wait(MENTAL_REPLAY_PAUSE)  # fixed pause (e.g. 1s)
+        core.wait(MENTAL_REPLAY_PAUSE)
 
     elif block_type == "without_mental_replay":
-        circle_waiting.draw()
+        for arrow in arrows_outward:
+            arrow.draw()
         win.flip()
-        # Insert matched delay + jitter so timing aligns with replay trials
+        check_for_escape()
         core.wait(MENTAL_REPLAY_PAUSE)
 
     # Ratings loop
@@ -467,13 +486,7 @@ def exp_phase():
                 "vividness_on_left": "NA"
             }
             save_trial_data(data_file, header, row_dict)
-
-        # Show condition-specific instructions at the start of each block
-        if condition == "without_mental_replay":
-            utils.show_images(win, image_task2, min_display_time)  # non-replay
-        else:
-            utils.show_images(win, image_task1, min_display_time)  # replay
-
+            
         # Run all trials in block
         for trial in range(TRIALS_PER_BLOCK):
             win.flip()
@@ -497,7 +510,8 @@ def exp_phase():
                 stim_duration=STIMULUS_DURATION,
             )
 
-# training_phase()
+#training_phase()
+#utils.show_images(win, image_exp_instructions, min_display_time) 
 exp_phase()
 utils.show_images(win, image_end, min_display_time)
 win.close()
